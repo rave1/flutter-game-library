@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:game_app/form_widget.dart';
+import 'package:game_app/interfaces/album.dart';
+import 'package:http/http.dart' as http;
+
 
 void main() => runApp(const MyApp());
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+
+}
+
+class _MyAppState extends State<MyApp> {
+  late Future<List<Album>> futureAlbum;
+
+  @override
+  void initState() {
+    super.initState();
+    futureAlbum = fetchAlbum();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,79 +33,50 @@ class MyApp extends StatelessWidget {
         appBar: AppBar(
           title: const Text(appTitle),
         ),
-        body: const MyCustomForm(),
-      ),
-    );
-  }
-}
-
-// Create a Form widget.
-class MyCustomForm extends StatefulWidget {
-  const MyCustomForm({super.key});
-
-  @override
-  MyCustomFormState createState() {
-    return MyCustomFormState();
-  }
-}
-
-// Create a corresponding State class.
-// This class holds data related to the form.
-class MyCustomFormState extends State<MyCustomForm> {
-  // Create a global key that uniquely identifies the Form widget
-  // and allows validation of the form.
-  //
-  // Note: This is a GlobalKey<FormState>,
-  // not a GlobalKey<MyCustomFormState>.
-  final _formKey = GlobalKey<FormState>();
-
-  // Create a text controller and use it to retrieve the current value
-  // of the TextField.
-  final myController = TextEditingController();
-
-  @override
-  void dispose() {
-    // Clean up the controller when the widget is disposed.
-    myController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Build a Form widget using the _formKey created above.
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextFormField(
-            // The validator receives the text that the user has entered.
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter some text';
-              }
-              return null;
-            },
-            controller: myController,
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: ElevatedButton(
-              onPressed: () {
-                // Validate returns true if the form is valid, or false otherwise.
-                if (_formKey.currentState!.validate()) {
-                  // If the form is valid, display a snackbar. In the real world,
-                  // you'd often call a server or save the information in a database.
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(myController.text)),
-                  );
+        body: ListView(
+          children: [
+            MyCustomForm(),
+            FutureBuilder(
+              future: futureAlbum,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                    final albums = snapshot.data!;
+                    return buildAlbums(albums);
+                } else if (snapshot.hasError) {
+                  return Text('${snapshot.error}');
                 }
-              },
-              child: const Text('Submit'),
-            ),
-          ),
-        ],
+                return const CircularProgressIndicator();
+              })
+          ],
+        )
       ),
     );
   }
+
+  Widget buildAlbums(List<Album> albums) {
+    return ListView.builder(
+      itemCount: albums.length,
+      itemBuilder: (context, index) {
+        final album = albums[index];
+        return Container(
+          color: Colors.grey.shade300,
+          margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+          padding: EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+          height: 100,
+          width: double.maxFinite,
+          child: Row(
+            children: [
+              // Expanded(flex: 1, child: Image.network(album.id!)),
+              SizedBox(width: 10),
+              Expanded(flex: 3, child: Text(album.title!)),
+            ],
+          )
+        );
+        
+      },
+      scrollDirection: Axis.vertical,
+      shrinkWrap: true,
+    );
+  }
 }
+
